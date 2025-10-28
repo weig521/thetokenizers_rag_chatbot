@@ -1,0 +1,9 @@
+streamlit: Used for building the web-based chat user interface. (From app.py)
+
+chromadb: The vector database used to store and retrieve document embeddings. (From data_ingestion.py and app.py)
+
+sentence-transformers: Used for loading the embedding models and the cross-encoder reranker. (From data_ingestion.py)
+
+python-dotenv: Used to load configuration variables from the .env file. (From app.py and data_ingestion.py)
+
+torch (PyTorch): Used for the sentence-transformers library, especially when using models that require GPU acceleration or advanced tensor operations. (From data_ingestion.py)
