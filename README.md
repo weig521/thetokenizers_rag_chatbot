@@ -18,6 +18,7 @@ It was created to solve the problem of information fragmentation across multiple
 The core of the system is built on a robust RAG pipeline:
 
 **1. Data Ingestion**
+
 Sources: Official USF websites for Admissions, Orientation, and Registrar.
 
 Format: Documents are converted to Markdown.
@@ -29,6 +30,7 @@ Embedding Model: Google EmbeddingGemma 300m via SentenceTransformers is used for
 Vector Database: Chroma is used for storage due to its lightweight, fast, and local persistence capabilities.
 
 **2. Retrieval Pipeline**
+
 Guardrail: User input is sanitized and checked for prompt injections.
 
 Initial Retrieval: Searches the Chroma vector database to retrieve the twenty most relevant text chunks.
@@ -38,6 +40,7 @@ Reranking: A cross encoder reranker (MS MARCO MiniLM L 6 v2) scores chunk simila
 Generation: The final context is sent to the Ollama Phi 3 Mini model, which generates the answer.
 
 **3. Output**
+
 Interface: Built with Streamlit for the chat interface and user sessions.
 
 Transparency: The response includes inline citations (e.g., [Source 1]) and a Sources list that displays document titles, categories, and verified URLs.
