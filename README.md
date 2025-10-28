@@ -98,3 +98,9 @@ We used **ChatGPT** to assist with:
 
 ## Demonstration Video on Youtube:
 **https://www.youtube.com/watch?v=lGyfctCOQDs**
+
+## Team Contributors:
+- Bhargav Rishi Medisetti
+- Chi Phuong Diep
+- Fabrizio Petrozzi
+- Gang Wei
