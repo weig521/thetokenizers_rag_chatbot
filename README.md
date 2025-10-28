@@ -81,6 +81,8 @@ Planned improvements for future versions include:
 
 Automatic Document Freshness Checks: To detect and prioritize the latest university policies.
 
+Demonstration Video on Youtube:  https://www.youtube.com/watch?v=lGyfctCOQDs
+
 Answerability Gate: To prevent the model from responding when the confidence score is too low.
 
 Category Routing: A light step to direct questions to the correct area (Registrar, Admissions, Orientation) before searching the vector database.
