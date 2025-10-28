@@ -91,7 +91,9 @@ Planned improvements for future versions include:
 
 ## AI Tools Disclosure
 We used **ChatGPT** to assist with:
+
 **Data ingestion:** drafting and refining the heading-aware Markdown splitter (chunk size/overlap, glue of short sections) and adding clean metadata fields (category, filename, canonical).
+
 **Core pipeline code:** helping put together rag.py (retrieval, cross-encoder reranking: retrieve-20 → rerank → top-5, numbered context, Sources block) and wiring it cleanly into app.py.
 
 ## Demonstration Video on Youtube:
