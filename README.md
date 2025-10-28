@@ -52,7 +52,7 @@ cd USF-Campus-Concierge
 python -m venv venv
 source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
 
-### 3. Install dependencies, check requirements.txt
+### 3. Install dependencies - Check requirements.txt
 
 ### 4. Set up Ollama (ensure it's running and the Phi 3 Mini model is pulled)
 ollama pull phi3:mini
@@ -63,10 +63,11 @@ python ingest_data.py
 ### 6. Run the Streamlit application
 streamlit run app.py
 
-**Security and Responsible AI**
+### Secure and Responsible AI
+
 Security was a core consideration from the start. Implemented guardrails include:
 
-Input Sanitization and Injection Detection: All inputs are checked for prompt injections, and the system returns a polite refusal for detected attempts.
+**Input Sanitization and Injection Detection:** All inputs are checked for prompt injections, and the system returns a polite refusal for detected attempts.
 
 **System Prompt Hardening:** The system prompt is stored on the server to prevent runtime edits and maintain consistent behavior.
 
@@ -85,10 +86,10 @@ Planned improvements for future versions include:
 
 **Dataset Balancing:** Adding more data from Registrar and Billing to reduce orientation bias.
 
-## AI Tools Disclosure (REQUIRED)
-We used ChatGPT to assist with:
-Data ingestion: drafting and refining the heading-aware Markdown splitter (chunk size/overlap, glue of short sections) and adding clean metadata fields (category, filename, canonical).
-Core pipeline code: helping put together rag.py (retrieval, cross-encoder reranking: retrieve-20 → rerank → top-5, numbered context, Sources block) and wiring it cleanly into app.py.
+## AI Tools Disclosure
+We used **ChatGPT** to assist with:
+**Data ingestion:** drafting and refining the heading-aware Markdown splitter (chunk size/overlap, glue of short sections) and adding clean metadata fields (category, filename, canonical).
+**Core pipeline code:** helping put together rag.py (retrieval, cross-encoder reranking: retrieve-20 → rerank → top-5, numbered context, Sources block) and wiring it cleanly into app.py.
 
-### Demonstration Video on Youtube:
+## Demonstration Video on Youtube:
 **https://www.youtube.com/watch?v=lGyfctCOQDs**
