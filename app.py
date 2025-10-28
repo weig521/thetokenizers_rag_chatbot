@@ -3,7 +3,7 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 from utils.database import ChatDatabase
-from utils.rag import generate_with_rag
+from utils.rag import generate_with_rag, estimate_tokens
 from utils.security import sanitize_user_input, is_injection, AuthManager
 from datetime import datetime
 
@@ -16,6 +16,8 @@ OLLAMA_MODEL    = os.environ.get("OLLAMA_MODEL", "phi3:mini")
 CHROMA_PERSIST  = os.environ.get("CHROMA_PERSIST", "./data/processed")
 CHROMA_COLLECTION = os.environ.get("CHROMA_COLLECTION", "usf_onboarding")
 EMBED_MODEL     = os.environ.get("EMBED_MODEL", "google/embeddinggemma-300m")
+SESSION_TOKEN_LIMIT = int(os.environ.get("SESSION_TOKEN_LIMIT", "1500"))  # total user+assistant tokens per session (small for testing)
+
 db = ChatDatabase()
 
 # Persist auth across reruns (st.session_state)
@@ -59,7 +61,19 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "pending_regen" not in st.session_state:
     st.session_state.pending_regen = False
+# Token-budget tracking
+if "token_total" not in st.session_state:
+    st.session_state.token_total = 0
+if "limit_reached" not in st.session_state:
+    st.session_state.limit_reached = False
 
+def _recompute_token_total(msgs: list[dict]) -> int:
+    """Count only user+assistant tokens for the session budget."""
+    return sum(
+        estimate_tokens(m.get("content", ""))
+        for m in msgs
+        if m.get("role") in ("user", "assistant")
+    )
 
 # Login/Register Page
 if not st.session_state.authenticated:
@@ -128,6 +142,8 @@ else:
                 st.session_state.username = None
                 st.session_state.current_session_id = None
                 st.session_state.messages = []
+                st.session_state.token_total = 0
+                st.session_state.limit_reached = False
                 st.rerun()
 
         with col2:
@@ -146,6 +162,9 @@ else:
             st.session_state.messages = [
                 {"role": "system", "content": "Assistant configured."}
             ]
+            # Reset token budget for the new chat
+            st.session_state.token_total = 0
+            st.session_state.limit_reached = False
             st.rerun()
 
         st.divider()
@@ -155,7 +174,6 @@ else:
 
         # Filter sessions
         sessions = db.search_sessions(st.session_state.user_id, search_query)
-
 
         if sessions:
             st.markdown(f"### 📁 Sessions ({len(sessions)})")
@@ -182,6 +200,9 @@ else:
                                 {"role": msg["role"], "content": msg["content"]}
                                 for msg in db_messages
                             ]
+                            # Recompute budget from loaded messages
+                            st.session_state.token_total = _recompute_token_total(st.session_state.messages)
+                            st.session_state.limit_reached = st.session_state.token_total >= SESSION_TOKEN_LIMIT
                             st.rerun()
 
                     with col2:
@@ -202,6 +223,8 @@ else:
                             if st.session_state.current_session_id == session["session_id"]:
                                 st.session_state.current_session_id = None
                                 st.session_state.messages = []
+                                st.session_state.token_total = 0
+                                st.session_state.limit_reached = False
                             st.rerun()
 
                     # Session info
@@ -258,6 +281,7 @@ else:
         for msg in st.session_state.messages[1:]:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"])
+
         # excercise 4, Regeneration Button
         if st.session_state.messages and st.session_state.messages[-1]["role"] == "assistant": # make sure msg generated and role is assistant
             if st.button("🔄 Regenerate Last Response"):
@@ -286,11 +310,24 @@ else:
                         else:
                             final_text = text
                             placeholder.write(final_text)
+                out_toks = estimate_tokens(final_text or "")
+                st.session_state.token_total += out_toks
+                st.session_state.limit_reached = st.session_state.token_total >= SESSION_TOKEN_LIMIT
+
                 st.session_state.messages.append({"role": "assistant", "content": final_text})
                 db.add_message(st.session_state.current_session_id, "assistant", final_text)
                 st.rerun()
-        # User input
-        user_input = st.chat_input("Type your message here...")
+
+        # User input (gated by token budget)
+        if st.session_state.limit_reached:
+            st.warning(
+                f"Session token budget reached "
+                f"({st.session_state.token_total}/{SESSION_TOKEN_LIMIT}). "
+                "Please open a new session to continue."
+            )
+            user_input = None
+        else:
+            user_input = st.chat_input("Type your message here...")
 
         if user_input:
             clean = sanitize_user_input(user_input)
@@ -306,6 +343,12 @@ else:
                 warn = "That looks like a prompt-injection attempt. For safety, I can’t run that. Try a normal question."
                 with st.chat_message("assistant"):
                     st.write(warn)
+                # Count tokens 
+                in_toks  = estimate_tokens(clean)
+                out_toks = estimate_tokens(warn)
+                st.session_state.token_total += (in_toks + out_toks)
+                st.session_state.limit_reached = st.session_state.token_total >= SESSION_TOKEN_LIMIT
+
                 st.session_state.messages.append({"role": "assistant", "content": warn})
                 db.add_message(st.session_state.current_session_id, "assistant", warn)
                 st.rerun()
@@ -329,10 +372,15 @@ else:
                         final_text = text
                         placeholder.write(final_text)
 
+            # Count tokens 
+            in_toks  = estimate_tokens(clean)
+            out_toks = estimate_tokens(final_text or "")
+            st.session_state.token_total += (in_toks + out_toks)
+            st.session_state.limit_reached = st.session_state.token_total >= SESSION_TOKEN_LIMIT
+
             st.session_state.messages.append({"role": "assistant", "content": final_text})
             db.add_message(st.session_state.current_session_id, "assistant", final_text)
             st.rerun()
-
 
     else:
         # Dashboard
@@ -375,8 +423,9 @@ else:
                             {"role": msg["role"], "content": msg["content"]}
                             for msg in messages
                         ]
+                        st.session_state.token_total = _recompute_token_total(st.session_state.messages)
+                        st.session_state.limit_reached = st.session_state.token_total >= SESSION_TOKEN_LIMIT
                         st.rerun()
 
         else:
             st.info("👈 Create your first session to start chatting!")
-
